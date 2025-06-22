@@ -145,10 +145,6 @@
       <h1 id="count">0</h1>
     </div>
     <div class="card">
-      <h2>مجموع الأجور</h2>
-      <h1 id="totalFee">0</h1>
-    </div>
-    <div class="card">
       <h2>أجور هذا اليوم</h2>
       <h1 id="dailyFee">0</h1>
     </div>
@@ -200,10 +196,6 @@
 
     countRef.on("value", snapshot => {
       document.getElementById("count").textContent = snapshot.val() ?? 0;
-    });
-
-    totalFeeRef.on("value", snapshot => {
-      document.getElementById("totalFee").textContent = snapshot.val() ?? 0;
     });
 
     function updateDailyFeeDisplay() {
