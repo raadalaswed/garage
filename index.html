@@ -1,69 +1,193 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>نظام كراج السيارات</title>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
       direction: rtl;
       text-align: center;
-      margin-top: 40px;
+      background-color: #0e0e0e;
+      color: #f0f0f0;
+      margin: 0;
+      padding: 0;
     }
-    input, button {
-      padding: 10px;
-      margin: 5px;
-      font-size: 16px;
+    header {
+      background: linear-gradient(to right, #d00000, #1a1a1a);
+      padding: 25px;
+      font-size: 28px;
+      font-weight: bold;
+      color: white;
+      box-shadow: 0 0 10px #d00000;
     }
-    h1 {
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 30px;
+      margin: 40px 0;
+    }
+    .card {
+      background: #1c1c1c;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 25px;
+      min-width: 220px;
+      box-shadow: 0 0 10px rgba(255,0,0,0.3);
+      transition: transform 0.2s ease;
+    }
+    .card:hover {
+      transform: scale(1.03);
+    }
+    .card h2 {
+      font-size: 20px;
+      color: #aaa;
+    }
+    .card h1 {
       font-size: 50px;
+      color: #ff2e2e;
+      margin: 0;
+    }
+    .buttons {
+      margin: 20px;
+    }
+    .buttons button {
+      padding: 14px 28px;
+      margin: 12px;
+      font-size: 18px;
+      background-color: #d00000;
+      border: none;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    .buttons button:hover {
+      background-color: #a40000;
+    }
+    #formContainer {
+      background: #1c1c1c;
+      border-radius: 12px;
+      padding: 25px;
+      max-width: 420px;
+      margin: 0 auto;
+      box-shadow: 0 0 15px rgba(0,0,0,0.5);
+      display: none;
+    }
+    input {
+      width: 90%;
+      padding: 12px;
+      margin: 12px 0;
+      font-size: 16px;
+      border: 1px solid #444;
+      border-radius: 5px;
+      background-color: #111;
+      color: #eee;
+    }
+    input::placeholder {
+      color: #888;
+    }
+    #formContainer button {
+      background-color: #007bff;
+    }
+    footer {
+      margin-top: 60px;
+      color: #666;
+      font-size: 14px;
+    }
+    .brand {
+      color: #ff2e2e;
+      font-weight: bold;
+      font-size: 15px;
+      letter-spacing: 1px;
+    }
+    ul#carList {
+      list-style: none;
+      padding: 0;
+      max-width: 600px;
+      margin: 30px auto;
+    }
+    ul#carList li {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      margin: 8px 0;
+      padding: 15px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    ul#carList li button {
+      background: #b00000;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    ul#carList li button:hover {
+      background: #800000;
     }
   </style>
 </head>
 <body>
 
-  <h2>🚗 عدد السيارات داخل الكراج:</h2>
-  <h1 id="count">0</h1>
+  <header>🚗 نظام كراج السيارات</header>
 
-  <h2>💰 مجموع الأجور:</h2>
-  <h1 id="totalFee">0</h1>
+  <div class="stats">
+    <div class="card">
+      <h2>عدد السيارات داخل الكراج</h2>
+      <h1 id="count">0</h1>
+    </div>
+    <div class="card">
+      <h2>مجموع الأجور</h2>
+      <h1 id="totalFee">0</h1>
+    </div>
+  </div>
 
-  <button onclick="showForm()">➕ دخول سيارة</button>
-  <button onclick="removeCar()">➖ خروج سيارة</button>
+  <div class="buttons">
+    <button onclick="showForm()">➕ دخول سيارة</button>
+  </div>
 
-  <div id="formContainer" style="display:none;">
+  <div id="formContainer">
     <h3>معلومات السيارة (اختياري):</h3>
-    <input id="carNumber" placeholder="رقم السيارة"><br>
-    <input id="color" placeholder="لون السيارة"><br>
-    <input id="fee" placeholder="قيمة الأجرة"><br>
-    <input id="phone" placeholder="رقم الهاتف"><br>
+    <input id="carNumber" placeholder="رقم السيارة" />
+    <input id="color" placeholder="لون السيارة" />
+    <input id="fee" placeholder="قيمة الأجرة" />
+    <input id="phone" placeholder="رقم الهاتف" />
+    <br />
     <button onclick="submitCar()">تسجيل</button>
   </div>
 
+  <h2 style="margin-top: 40px;">🚘 السيارات الموجودة حاليًا:</h2>
+  <ul id="carList"></ul>
+
+  <footer>
+    <p>by <span class="brand">Raad Alaswed</span></p>
+  </footer>
+
   <script>
-    // 🔻 انسخ معلومات Firebase الخاصة بك هنا من صفحة الإعدادات 🔻
-   const firebaseConfig = {
-  apiKey: "AIzaSyC7EVNCSl48CQgIC_a8wdC5UG2tKLtNKjQ",
-  authDomain: "garag-system.firebaseapp.com",
-  databaseURL: "https://garag-system-default-rtdb.firebaseio.com",
-  projectId: "garag-system",
-  storageBucket: "garag-system.firebasestorage.app",
-  messagingSenderId: "330947022055",
-  appId: "1:330947022055:web:d0c9d378e200c7de45a642"
-};
-
-
+    const firebaseConfig = {
+      apiKey: "AIzaSyC7EVNCSl48CQgIC_a8wdC5UG2tKLtNKjQ",
+      authDomain: "garag-system.firebaseapp.com",
+      databaseURL: "https://garag-system-default-rtdb.firebaseio.com",
+      projectId: "garag-system",
+      storageBucket: "garag-system.firebasestorage.app",
+      messagingSenderId: "330947022055",
+      appId: "1:330947022055:web:d0c9d378e200c7de45a642"
+    };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const countRef = db.ref("carCount");
     const totalFeeRef = db.ref("totalFee");
+    const currentCarsRef = db.ref("currentCars");
 
     countRef.on("value", (snapshot) => {
       document.getElementById("count").textContent = snapshot.val() ?? 0;
     });
-
     totalFeeRef.on("value", (snapshot) => {
       document.getElementById("totalFee").textContent = snapshot.val() ?? 0;
     });
@@ -94,8 +218,8 @@
 
       const historyRef = db.ref("history/" + today).push();
       historyRef.set(newCar);
+      currentCarsRef.push(newCar);
       countRef.transaction(current => (current || 0) + 1);
-
       if (fee) {
         totalFeeRef.transaction(current => (current || 0) + parseInt(fee));
       }
@@ -107,7 +231,24 @@
       document.getElementById("phone").value = "";
     }
 
-    function removeCar() {
+    // عرض السيارات الحالية
+    currentCarsRef.on("value", (snapshot) => {
+      const carList = document.getElementById("carList");
+      carList.innerHTML = "";
+      snapshot.forEach((child) => {
+        const car = child.val();
+        const key = child.key;
+        const item = document.createElement("li");
+        item.innerHTML = `
+          ${car.carNumber || "بدون رقم"} - ${car.color || "بدون لون"} - ${car.fee || "0"} دينار - ${car.phone || "لا يوجد"}
+          <button onclick="removeSpecificCar('${key}')">🟥 إخراج</button>
+        `;
+        carList.appendChild(item);
+      });
+    });
+
+    function removeSpecificCar(key) {
+      db.ref("currentCars/" + key).remove();
       countRef.transaction(current => Math.max((current || 0) - 1, 0));
     }
   </script>
