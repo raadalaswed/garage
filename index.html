@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>نظام كراج السيارات</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      direction: rtl;
+      text-align: center;
+      margin-top: 40px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px;
+      font-size: 16px;
+    }
+    h1 {
+      font-size: 50px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🚗 عدد السيارات داخل الكراج:</h2>
+  <h1 id="count">0</h1>
+
+  <h2>💰 مجموع الأجور:</h2>
+  <h1 id="totalFee">0</h1>
+
+  <button onclick="showForm()">➕ دخول سيارة</button>
+  <button onclick="removeCar()">➖ خروج سيارة</button>
+
+  <div id="formContainer" style="display:none;">
+    <h3>معلومات السيارة (اختياري):</h3>
+    <input id="carNumber" placeholder="رقم السيارة"><br>
+    <input id="color" placeholder="لون السيارة"><br>
+    <input id="fee" placeholder="قيمة الأجرة"><br>
+    <input id="phone" placeholder="رقم الهاتف"><br>
+    <button onclick="submitCar()">تسجيل</button>
+  </div>
+
+  <script>
+    // 🔻 انسخ معلومات Firebase الخاصة بك هنا من صفحة الإعدادات 🔻
+   const firebaseConfig = {
+  apiKey: "AIzaSyC7EVNCSl48CQgIC_a8wdC5UG2tKLtNKjQ",
+  authDomain: "garag-system.firebaseapp.com",
+  databaseURL: "https://garag-system-default-rtdb.firebaseio.com",
+  projectId: "garag-system",
+  storageBucket: "garag-system.firebasestorage.app",
+  messagingSenderId: "330947022055",
+  appId: "1:330947022055:web:d0c9d378e200c7de45a642"
+};
+
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const countRef = db.ref("carCount");
+    const totalFeeRef = db.ref("totalFee");
+
+    countRef.on("value", (snapshot) => {
+      document.getElementById("count").textContent = snapshot.val() ?? 0;
+    });
+
+    totalFeeRef.on("value", (snapshot) => {
+      document.getElementById("totalFee").textContent = snapshot.val() ?? 0;
+    });
+
+    function getTodayDate() {
+      const today = new Date();
+      return today.toISOString().split('T')[0];
+    }
+
+    function showForm() {
+      document.getElementById("formContainer").style.display = "block";
+    }
+
+    function submitCar() {
+      const today = getTodayDate();
+      const carNumber = document.getElementById("carNumber").value;
+      const color = document.getElementById("color").value;
+      const fee = document.getElementById("fee").value;
+      const phone = document.getElementById("phone").value;
+
+      const newCar = {
+        carNumber: carNumber || null,
+        color: color || null,
+        fee: fee || null,
+        phone: phone || null,
+        timestamp: new Date().toISOString()
+      };
+
+      const historyRef = db.ref("history/" + today).push();
+      historyRef.set(newCar);
+      countRef.transaction(current => (current || 0) + 1);
+
+      if (fee) {
+        totalFeeRef.transaction(current => (current || 0) + parseInt(fee));
+      }
+
+      document.getElementById("formContainer").style.display = "none";
+      document.getElementById("carNumber").value = "";
+      document.getElementById("color").value = "";
+      document.getElementById("fee").value = "";
+      document.getElementById("phone").value = "";
+    }
+
+    function removeCar() {
+      countRef.transaction(current => Math.max((current || 0) - 1, 0));
+    }
+  </script>
+</body>
+</html>
