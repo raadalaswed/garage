@@ -119,12 +119,14 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
     }
     ul#carList li button {
       background: #b00000;
       color: white;
       border: none;
       padding: 8px 14px;
+      margin: 5px;
       border-radius: 6px;
       cursor: pointer;
     }
@@ -145,6 +147,10 @@
     <div class="card">
       <h2>مجموع الأجور</h2>
       <h1 id="totalFee">0</h1>
+    </div>
+    <div class="card">
+      <h2>أجور هذا اليوم</h2>
+      <h1 id="dailyFee">0</h1>
     </div>
   </div>
 
@@ -184,72 +190,98 @@
     const countRef = db.ref("carCount");
     const totalFeeRef = db.ref("totalFee");
     const currentCarsRef = db.ref("currentCars");
+    const dailyTotalsRef = db.ref("dailyTotals");
 
-    countRef.on("value", (snapshot) => {
+    function getTodayDateBaghdad() {
+      const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Baghdad" }));
+      if (now.getHours() < 8) now.setDate(now.getDate() - 1);
+      return now.toISOString().split('T')[0];
+    }
+
+    countRef.on("value", snapshot => {
       document.getElementById("count").textContent = snapshot.val() ?? 0;
     });
-    totalFeeRef.on("value", (snapshot) => {
+
+    totalFeeRef.on("value", snapshot => {
       document.getElementById("totalFee").textContent = snapshot.val() ?? 0;
     });
 
-    function getTodayDate() {
-      const today = new Date();
-      return today.toISOString().split('T')[0];
+    function updateDailyFeeDisplay() {
+      const today = getTodayDateBaghdad();
+      dailyTotalsRef.child(today).on("value", snapshot => {
+        document.getElementById("dailyFee").textContent = snapshot.val() ?? 0;
+      });
     }
+    updateDailyFeeDisplay();
 
     function showForm() {
       document.getElementById("formContainer").style.display = "block";
     }
 
     function submitCar() {
-      const today = getTodayDate();
+      const today = getTodayDateBaghdad();
       const carNumber = document.getElementById("carNumber").value;
       const color = document.getElementById("color").value;
       const fee = document.getElementById("fee").value;
       const phone = document.getElementById("phone").value;
+      const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Baghdad" }));
+      const timestamp = now.toISOString();
 
       const newCar = {
         carNumber: carNumber || null,
         color: color || null,
         fee: fee || null,
         phone: phone || null,
-        timestamp: new Date().toISOString()
+        timestamp
       };
 
-      const historyRef = db.ref("history/" + today).push();
-      historyRef.set(newCar);
-      currentCarsRef.push(newCar);
+      db.ref("history/" + today).push(newCar);
+      const carRef = currentCarsRef.push(newCar);
       countRef.transaction(current => (current || 0) + 1);
+
       if (fee) {
-        totalFeeRef.transaction(current => (current || 0) + parseInt(fee));
+        const numericFee = parseInt(fee);
+        totalFeeRef.transaction(current => (current || 0) + numericFee);
+        dailyTotalsRef.child(today).transaction(current => (current || 0) + numericFee);
       }
 
+      ["carNumber", "color", "fee", "phone"].forEach(id => document.getElementById(id).value = "");
       document.getElementById("formContainer").style.display = "none";
-      document.getElementById("carNumber").value = "";
-      document.getElementById("color").value = "";
-      document.getElementById("fee").value = "";
-      document.getElementById("phone").value = "";
     }
 
-    // عرض السيارات الحالية
-    currentCarsRef.on("value", (snapshot) => {
+    currentCarsRef.on("value", snapshot => {
       const carList = document.getElementById("carList");
       carList.innerHTML = "";
-      snapshot.forEach((child) => {
+      snapshot.forEach(child => {
         const car = child.val();
         const key = child.key;
+        const fee = parseInt(car.fee) || 0;
         const item = document.createElement("li");
         item.innerHTML = `
-          ${car.carNumber || "بدون رقم"} - ${car.color || "بدون لون"} - ${car.fee || "0"} دينار - ${car.phone || "لا يوجد"}
-          <button onclick="removeSpecificCar('${key}')">🟥 إخراج</button>
+          <div>
+            ${car.carNumber || "بدون رقم"} - ${car.color || "بدون لون"} - ${car.fee || "0"} دينار - ${car.phone || "لا يوجد"}
+          </div>
+          <div>
+            <button onclick="removeSpecificCar('${key}', ${fee})">🟥 إخراج</button>
+            <button onclick="deleteCarFee('${key}', ${fee})">🗑 حذف الأجرة</button>
+          </div>
         `;
         carList.appendChild(item);
       });
     });
 
-    function removeSpecificCar(key) {
+    function removeSpecificCar(key, fee) {
       db.ref("currentCars/" + key).remove();
       countRef.transaction(current => Math.max((current || 0) - 1, 0));
+    }
+
+    function deleteCarFee(key, fee) {
+      if (fee > 0) {
+        totalFeeRef.transaction(current => Math.max((current || 0) - fee, 0));
+        const today = getTodayDateBaghdad();
+        dailyTotalsRef.child(today).transaction(current => Math.max((current || 0) - fee, 0));
+      }
+      db.ref("currentCars/" + key + "/fee").remove();
     }
   </script>
 </body>
