@@ -133,6 +133,54 @@
     ul#carList li button:hover {
       background: #800000;
     }
+    .car-image {
+      max-width: 100px;
+      max-height: 100px;
+      border-radius: 8px;
+      margin: 10px;
+    }
+    .car-details {
+      flex: 1;
+      text-align: right;
+    }
+    .car-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .camera-container {
+      position: relative;
+      display: inline-block;
+    }
+    .camera-button {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .camera-button:hover {
+      background-color: #218838;
+    }
+    #cameraInput {
+      display: none;
+    }
+    #imagePreview {
+      max-width: 100px;
+      max-height: 100px;
+      border-radius: 8px;
+      margin: 10px 0;
+      display: none;
+    }
+    .edit-fee-button {
+      background: #ffc107 !important;
+      color: #000 !important;
+    }
+    .edit-fee-button:hover {
+      background: #e0a800 !important;
+    }
   </style>
 </head>
 <body>
@@ -158,8 +206,17 @@
     <h3>معلومات السيارة (اختياري):</h3>
     <input id="carNumber" placeholder="رقم السيارة" />
     <input id="color" placeholder="لون السيارة" />
-    <input id="fee" placeholder="قيمة الأجرة" />
     <input id="phone" placeholder="رقم الهاتف" />
+    
+    <div class="camera-container">
+      <button type="button" class="camera-button" onclick="document.getElementById('cameraInput').click()">
+        📷 التقاط صورة
+      </button>
+      <input type="file" id="cameraInput" accept="image/*" capture="camera" onchange="previewImage(event)">
+    </div>
+    
+    <img id="imagePreview" alt="معاينة الصورة">
+    
     <br />
     <button onclick="submitCar()">تسجيل</button>
   </div>
@@ -188,10 +245,22 @@
     const currentCarsRef = db.ref("currentCars");
     const dailyTotalsRef = db.ref("dailyTotals");
 
+    let selectedImage = null;
+
     function getTodayDateBaghdad() {
       const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Baghdad" }));
       if (now.getHours() < 8) now.setDate(now.getDate() - 1);
       return now.toISOString().split('T')[0];
+    }
+
+    function formatTime(timestamp) {
+      const date = new Date(timestamp);
+      const baghdadTime = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Baghdad" }));
+      return baghdadTime.toLocaleTimeString('ar-IQ', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false 
+      });
     }
 
     countRef.on("value", snapshot => {
@@ -210,34 +279,51 @@
       document.getElementById("formContainer").style.display = "block";
     }
 
+    function previewImage(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          selectedImage = e.target.result;
+          const preview = document.getElementById('imagePreview');
+          preview.src = selectedImage;
+          preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
     function submitCar() {
       const today = getTodayDateBaghdad();
       const carNumber = document.getElementById("carNumber").value;
       const color = document.getElementById("color").value;
-      const fee = document.getElementById("fee").value;
       const phone = document.getElementById("phone").value;
+      const fee = 3000; // الأجرة ثابتة 3000 دينار
       const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Baghdad" }));
       const timestamp = now.toISOString();
 
       const newCar = {
         carNumber: carNumber || null,
         color: color || null,
-        fee: fee || null,
+        fee: fee,
         phone: phone || null,
-        timestamp
+        timestamp,
+        image: selectedImage || null
       };
 
       db.ref("history/" + today).push(newCar);
       const carRef = currentCarsRef.push(newCar);
       countRef.transaction(current => (current || 0) + 1);
 
-      if (fee) {
-        const numericFee = parseInt(fee);
-        totalFeeRef.transaction(current => (current || 0) + numericFee);
-        dailyTotalsRef.child(today).transaction(current => (current || 0) + numericFee);
-      }
+      // إضافة الأجرة تلقائياً
+      totalFeeRef.transaction(current => (current || 0) + fee);
+      dailyTotalsRef.child(today).transaction(current => (current || 0) + fee);
 
-      ["carNumber", "color", "fee", "phone"].forEach(id => document.getElementById(id).value = "");
+      // تنظيف النموذج
+      ["carNumber", "color", "phone"].forEach(id => document.getElementById(id).value = "");
+      document.getElementById("cameraInput").value = "";
+      document.getElementById("imagePreview").style.display = "none";
+      selectedImage = null;
       document.getElementById("formContainer").style.display = "none";
     }
 
@@ -248,14 +334,21 @@
         const car = child.val();
         const key = child.key;
         const fee = parseInt(car.fee) || 0;
+        const entryTime = formatTime(car.timestamp);
         const item = document.createElement("li");
+        
         item.innerHTML = `
-          <div>
-            ${car.carNumber || "بدون رقم"} - ${car.color || "بدون لون"} - ${car.fee || "0"} دينار - ${car.phone || "لا يوجد"}
+          <div class="car-details">
+            <div><strong>رقم السيارة:</strong> ${car.carNumber || "بدون رقم"}</div>
+            <div><strong>اللون:</strong> ${car.color || "بدون لون"}</div>
+            <div><strong>الأجرة:</strong> ${car.fee || "0"} دينار</div>
+            <div><strong>الهاتف:</strong> ${car.phone || "لا يوجد"}</div>
+            <div><strong>وقت الدخول:</strong> ${entryTime}</div>
+            ${car.image ? `<img src="${car.image}" class="car-image" alt="صورة السيارة">` : ''}
           </div>
-          <div>
+          <div class="car-actions">
             <button onclick="removeSpecificCar('${key}', ${fee})">🟥 إخراج</button>
-            <button onclick="deleteCarFee('${key}', ${fee})">🗑 حذف الأجرة</button>
+            <button class="edit-fee-button" onclick="editCarFee('${key}', ${fee})">✏️ تعديل الأجرة</button>
           </div>
         `;
         carList.appendChild(item);
@@ -267,13 +360,20 @@
       countRef.transaction(current => Math.max((current || 0) - 1, 0));
     }
 
-    function deleteCarFee(key, fee) {
-      if (fee > 0) {
-        totalFeeRef.transaction(current => Math.max((current || 0) - fee, 0));
+    function editCarFee(key, currentFee) {
+      const newFee = prompt("أدخل الأجرة الجديدة:", currentFee);
+      if (newFee !== null && !isNaN(newFee) && newFee >= 0) {
+        const numericNewFee = parseInt(newFee);
+        const difference = numericNewFee - currentFee;
+        
+        // تحديث الأجرة في البيانات
+        db.ref("currentCars/" + key + "/fee").set(numericNewFee);
+        
+        // تحديث المجاميع
+        totalFeeRef.transaction(current => (current || 0) + difference);
         const today = getTodayDateBaghdad();
-        dailyTotalsRef.child(today).transaction(current => Math.max((current || 0) - fee, 0));
+        dailyTotalsRef.child(today).transaction(current => (current || 0) + difference);
       }
-      db.ref("currentCars/" + key + "/fee").remove();
     }
   </script>
 </body>
